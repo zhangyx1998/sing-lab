@@ -1,0 +1,155 @@
+<!------------------------------------------------------
+Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
+This source code is licensed under the MIT license.
+You may find the full license in project root directory.
+--------------------------------------------------------
+This is the entry point of the single page application.
+------------------------------------------------------->
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, user-scalable=no"
+        />
+        <meta name="color-scheme" content="dark light" />
+        <title>Sing Lab</title>
+        <style>
+            * {
+                user-select: none;
+                box-sizing: border-box;
+            }
+
+            :root {
+                font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+                font-weight: normal;
+                --color: white;
+
+                color-scheme: dark;
+                color: white;
+                background-color: #101010;
+
+                font-synthesis: none;
+                text-rendering: optimizeLegibility;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            #app {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 100vw;
+                padding: 0;
+                margin: 0;
+                display: flex;
+                min-height: none;
+                overflow: hidden;
+            }
+
+            #app > div {
+                position: absolute;
+                padding: 20px;
+                box-sizing: border-box;
+                outline: 0.5px solid gray;
+                display: flex;
+                align-items: center;
+            }
+
+            .mono {
+                font-family: "Cascadia Code", "Courier New", Courier, monospace;
+            }
+
+            .reactive:hover {
+                background-color: #fff1;
+            }
+
+            .reactive:active {
+                background-color: #fff2;
+            }
+
+            .button {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+                margin: 0;
+                padding: 0.6em 0.4em;
+                cursor: pointer;
+                background-color: transparent;
+                border: none;
+                outline: none;
+                --hover-color: #fff1;
+                --active-color: #fff2;
+
+                &:hover {
+                    background-color: var(--hover-color);
+                }
+
+                &:active {
+                    background-color: var(--active-color);
+                }
+
+                & > svg {
+                    transform: scale(1.2);
+                }
+            }
+
+            .icon path {
+                fill: var(--color) !important;
+            }
+            .icon.bold path {
+                stroke-width: 0.4 !important;
+                stroke: var(--color) !important;
+            }
+
+            .invisible-scrollbar {
+                -ms-overflow-style: none; /* IE and Edge */
+                scrollbar-width: none; /* Firefox */
+            }
+
+            .invisible-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+
+            input:not([type]),
+            input[type="text"] {
+                border: none;
+                background-color: transparent;
+                color: var(--color);
+                font-size: 1em;
+                padding: 0;
+                outline: none;
+                font-family: unset;
+            }
+
+            .underline {
+                padding-top: 0.2em;
+                padding-bottom: 0.2em;
+                border-top: 2px solid transparent;
+                border-bottom: 2px solid transparent;
+            }
+            .underline:focus,
+            .underline:focus-within {
+                border-bottom: 2px solid #aaac;
+            }
+        </style>
+    </head>
+    <body oncontextmenu="return false;">
+        <div id="app" class="col-layout grid-view"></div>
+    </body>
+    <script type="module">
+        import { createApp } from "vue";
+        import App from "./index.vue";
+        createApp(App).mount("#app");
+        // Prevent global zooming on macOS
+        function preventZoom(e) {
+            if (e.metaKey || e.ctrlKey) e.preventDefault();
+        }
+        document.addEventListener("wheel", preventZoom, { passive: false });
+    </script>
+</html>
