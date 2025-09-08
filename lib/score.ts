@@ -79,14 +79,16 @@ class Block {
     get slice(): string {
         return this.src.slice(this.range[0], this.range[1]);
     }
-    get length(): number {return this.range[1] - this.range[0];}
+    get length(): number {
+        return this.range[1] - this.range[0];
+    }
     readonly children?: Block[];
     readonly el: DefineComponent;
 
     constructor(
         public readonly parent: Block | string,
         private parser: Parser | null = null,
-        range: [number, number] | null = null,
+        range: [number, number] | null = null
     ) {
         this.range = range ?? [0, this.src.length];
     }

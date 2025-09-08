@@ -17,6 +17,15 @@
     caret-color: white;
     user-select: text;
 
+    --delim-color-1: rgb(246, 212, 58);
+    --delim-color-2: rgb(198, 107, 203);
+    --delim-color-3: rgb(72, 145, 248);
+    --delim-color: var(--delim-color-1);
+
+    .delimiter {
+        color: var(--delim-color);
+    }
+
     * {
         position: relative;
         overflow: visible;
@@ -30,15 +39,6 @@
 
     *[disabled] {
         pointer-events: none;
-    }
-
-    --delim-color-1: rgb(246, 212, 58);
-    --delim-color-2: rgb(198, 107, 203);
-    --delim-color-3: rgb(72, 145, 248);
-    --delim-color: var(--delim-color-1);
-
-    .delimiter {
-        color: var(--delim-color);
     }
 
     .hint.indent {
@@ -55,7 +55,7 @@
         .entry.unused {
             color: #AAA;
             filter: brightness(0.8);
-            
+
             &:not(.focus) {
                 filter: brightness(0.5);
                 text-decoration: line-through;

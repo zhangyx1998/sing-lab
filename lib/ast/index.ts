@@ -23,7 +23,25 @@ export default class AST {
     readonly registry = new Map<Node, TreeNode>();
     readonly meta = new MetaCodeBlock.MetaData();
     readonly score: ScoreCodeBlock[] = [];
-    readonly parser = new Parser(this);
+    // Recursive descent parser
+    private parsed = new WeakSet<Block>();
+    parse(block: Block, parent: TreeNode) {
+        if (this.parsed.has(block)) crash("Block already parsed", this.parse);
+        this.parsed.add(block);
+        const node = new TreeNode.Span(parent, block, block.attrs);
+        try {
+            for (const element of block.parse()) {
+                if (element instanceof Token)
+                    node.push(new TreeNode.Span(node, element, element.attrs));
+                else if (element instanceof Hint)
+                    node.push(createHintNode(node, element));
+                else node.push(this.parse(element, node));
+            }
+        } catch (error) {
+            console.error("Error while parsing block:", error);
+        }
+        return node;
+    }
     constructor(readonly code: Code) {
         if (AST.registry.has(code)) return AST.registry.get(code)!;
         AST.registry.set(code, this);
@@ -36,7 +54,7 @@ export default class AST {
         remainder = remainder.trimStart(true);
         const block = MetaCodeBlock.match(remainder);
         if (block) {
-            this.root.push(this.parser.parse(block, this.root));
+            this.root.push(this.parse(block, this.root));
             remainder = this.code
                 .segment(block.end, remainder.end)
                 .trimStart(true);
@@ -52,13 +70,13 @@ export default class AST {
                 .join("\n");
             hint.suggest(() => code.insert(0, `---\n${value}\n---\n`));
             const block = new MicroBlock([], remainder.slice(0, 0), hint);
-            this.root.push(this.parser.parse(block, this.root));
+            this.root.push(this.parse(block, this.root));
             remainder = remainder.trimStart(true);
         }
         while (remainder.length > 0) {
             const block = ScoreCodeBlock.match(remainder);
             if (block === null) break;
-            this.root.push(this.parser.parse(block, this.root));
+            this.root.push(this.parse(block, this.root));
             remainder = this.code
                 .segment(block.end, remainder.end)
                 .trimStart(true);
@@ -217,29 +235,6 @@ export default class AST {
         if (document.activeElement !== el)
             crash("Failed to focus pseudo element");
         return;
-    }
-}
-
-class Parser {
-    public nest: number = 0;
-    constructor(public readonly ast: AST) {}
-    private parsed = new WeakSet<Block>();
-    parse(block: Block, parent: TreeNode) {
-        if (this.parsed.has(block)) crash("Block already parsed", this.parse);
-        this.parsed.add(block);
-        const node = new TreeNode.Span(parent, block, block.attrs);
-        try {
-            for (const element of block.parse()) {
-                if (element instanceof Token)
-                    node.push(new TreeNode.Span(node, element, element.attrs));
-                else if (element instanceof Hint)
-                    node.push(createHintNode(node, element));
-                else node.push(this.parse(element, node));
-            }
-        } catch (error) {
-            console.error("Error while parsing block:", error);
-        }
-        return node;
     }
 }
 

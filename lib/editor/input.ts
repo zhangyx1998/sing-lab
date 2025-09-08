@@ -77,11 +77,19 @@ export default function handleInput(
     }
 }
 
+function isLetter(c: string) {
+    return /^\p{L}+$/u.test(c);
+}
+
+function isSpace(c: string) {
+    return /^\p{Z}+$/u.test(c);
+}
+
 function createWordCounter() {
     let cond: ((c: string) => boolean) | null = null;
     return (c: string) => {
         if (cond === null) {
-            cond = /\s/.test(c) ? (c) => /\s/.test(c) : (c) => /\w/.test(c);
+            cond = isSpace(c) ? isSpace : isLetter;
             return true;
         }
         return cond(c);
