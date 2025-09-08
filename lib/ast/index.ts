@@ -3,102 +3,248 @@
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
 // -------------------------------------------------------
-import Code, { Segment, Cursor } from "./code.ts";
-import { Block, Token, Hint, TOP_LEVEL_BLOCKS } from "./syntax.ts";
-
+import { crash, clamp, getCursorOffset } from "@lib/util.ts";
+import Code, { Segment, Anchor, Cursor } from "./code.ts";
+import {
+    Block,
+    Token,
+    Hint,
+    MetaCodeBlock,
+    ScoreCodeBlock,
+    MicroBlock,
+} from "./syntax.ts";
 export default class AST {
+    // Global AST cache for each Code instance
     static readonly registry = new WeakMap<Code, AST>();
+    // Request autocomplete when user presses Tab key
+    autocomplete?: () => void;
+
     readonly root!: TreeNode<HTMLDivElement>;
     readonly registry = new Map<Node, TreeNode>();
+    readonly meta = new MetaCodeBlock.MetaData();
+    readonly score: ScoreCodeBlock[] = [];
+    readonly parser = new Parser(this);
     constructor(readonly code: Code) {
         if (AST.registry.has(code)) return AST.registry.get(code)!;
         AST.registry.set(code, this);
-        this.root = new TreeNode.Div(null, code.segment(), {
-            class: "root",
-            contenteditable: true,
-        });
-        return this.parse();
-    }
-    get ctx() {
-        const ctx = ParserContext.registry.get(this);
-        if (!ctx) throw new Error("Code not running under parser context");
-        return ctx;
-    }
-    public readonly meta: Record<string, Block & { val: string }> = {};
-    private parse(cursor?: Segment) {
-        const ctx = new ParserContext(this, cursor ?? this.code.segment(0, 0));
+        this.root = new RootNode(code.segment());
+        // Parse AST
         this.registry.clear();
         let remainder = this.code.segment();
-        match_block_loop: while (remainder.length > 0) {
-            for (const BLK of TOP_LEVEL_BLOCKS) {
-                const block = BLK.match(remainder);
-                if (block === null) continue;
-                this.root.push(parseAST.call(ctx, block, this.root));
-                remainder = this.code
-                    .segment(block.end, remainder.end)
-                    .trimStart(true);
-                continue match_block_loop;
-            }
-            break;
+        // Make sure caret can move to the start of the document
+        this.root.push(new TreeNode.Span(this.root, remainder.slice(0, 0)));
+        remainder = remainder.trimStart(true);
+        const block = MetaCodeBlock.match(remainder);
+        if (block) {
+            this.root.push(this.parser.parse(block, this.root));
+            remainder = this.code
+                .segment(block.end, remainder.end)
+                .trimStart(true);
+        } else {
+            remainder = this.code.segment();
+            const hint = new Hint(
+                "meta",
+                remainder.slice(0, 0),
+                `---\n${this.meta.preview}\n---\n`
+            );
+            const value = [...Object.keys(this.meta.flat)]
+                .map((k) => `${k}: `)
+                .join("\n");
+            hint.suggest(() => code.insert(0, `---\n${value}\n---\n`));
+            const block = new MicroBlock([], remainder.slice(0, 0), hint);
+            this.root.push(this.parser.parse(block, this.root));
+            remainder = remainder.trimStart(true);
+        }
+        while (remainder.length > 0) {
+            const block = ScoreCodeBlock.match(remainder);
+            if (block === null) break;
+            this.root.push(this.parser.parse(block, this.root));
+            remainder = this.code
+                .segment(block.end, remainder.end)
+                .trimStart(true);
         }
         if (remainder.length > 0) {
             this.root.push(
                 new TreeNode.Span(this.root, remainder, { class: "unknown" })
             );
+            remainder = remainder.slice(remainder.length);
         }
-        return this;
+        // Make sure caret can move to the end of the document
+        this.root.push(new TreeNode.Span(this.root, remainder));
     }
-    getCursor(selection: Selection) {
-        const { registry } = this;
-        const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
-        if (!anchorNode || !registry.has(anchorNode)) return null;
-        if (!focusNode || !registry.has(focusNode)) return null;
-        return new Cursor(
-            registry.get(anchorNode)!.segment.start + anchorOffset,
-            registry.get(focusNode)!.segment.start + focusOffset
+    /**
+     * Get TreeNode according to Node, errors out if not found.
+     */
+    get(node: Node): TreeNode {
+        const tree_node = this.registry.get(node);
+        if (!tree_node)
+            crash("Node not found in AST registry: " + node, this.get);
+        return tree_node;
+    }
+    // Traverse all DOM nodes, parent first
+    traverse(): Iterable<Node> {
+        function* traverse(node: Node): Iterable<Node> {
+            yield node;
+            for (const child of node.childNodes) yield* traverse(child);
+        }
+        return traverse(this.root.el);
+    }
+    // Music Parsing
+    // Selection related APIs
+    *textNodes() {
+        for (const node of this.traverse())
+            if (node.nodeType === Node.TEXT_NODE) yield node as Text;
+    }
+    // Selection related APIs
+    getNodesAt(pos: number) {
+        let p = 0;
+        const nodes: Node[] = [];
+        for (const node of this.traverse()) {
+            const { start, end } = this.get(node).segment;
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (p !== start)
+                    crash(`Text continuity error ${[p, start, end]}`, this.get);
+                p = end;
+            }
+            if (end < pos) continue;
+            if (start > pos) break;
+            nodes.push(node);
+        }
+        return nodes;
+    }
+    isAnchorNode(node: Node) {
+        return (
+            node.nodeType === Node.TEXT_NODE ||
+            Hint.isInteractive(this.get(node).segment)
         );
     }
-}
-
-class ParserContext {
-    static registry = new Map<AST, ParserContext>();
-    public last_block: Segment | null = null;
-    public nest: number = 0;
-    constructor(
-        ast: AST,
-        public cursor: Segment
-    ) {
-        ParserContext.registry.set(ast, this);
-    }
-}
-
-function parseAST(this: ParserContext, block: Block, parent: TreeNode) {
-    // if (this.last_block?.is(block)) throw new Error("Endless loop detected");
-    this.last_block = block;
-    const node = new TreeNode.Span(parent, block);
-    try {
-        for (const element of block.parse()) {
-            if (element instanceof Token) {
-                const token = new TreeNode.Span(node, element, element.attrs);
-                node.push(token);
-            } else if (element instanceof Hint) {
-                const hint = new TreeNode.Span(node, element, element.attrs);
-                hint.el = document.createElement("span");
-                hint.el.classList = ["hint", element.type]
-                    .flat(Infinity)
-                    .filter(Boolean)
-                    .join(" ");
-                hint.el.setAttribute("data-hint", element.hint);
-                hint.el.setAttribute("aria-hidden", "true");
-                hint.el.style.userSelect = "none";
-                hint.el.contentEditable = "false";
-                node.push(hint);
-            } else node.push(parseAST.call(this, element, node));
+    /**
+     * Given a DOM node and an offset within that node, find the corresponding
+     * Anchor position (offset + pseudo).
+     */
+    getAnchor(node: Node | null, offset: number): Anchor | null {
+        if (!node || !this.registry.has(node)) return null;
+        const block = this.get(node);
+        const pos = block.segment.start + getCursorOffset(node, offset);
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const [left, right] = [
+                node.childNodes[offset - 1],
+                node.childNodes[offset],
+            ];
+            if (this.registry.get(left)?.segment instanceof Hint) node = left;
+            else if (this.registry.get(right)?.segment instanceof Hint)
+                node = right;
+            else crash("Cursor at non-anchor element node");
+            offset = 0;
         }
-    } catch (error) {
-        console.error("Error while parsing block:", error);
+        // Fast path: quick check if cursor is inside a text node
+        if (offset > 0 && offset < block.segment.length)
+            // Cursor is inside a text node (not at boundary)
+            return new Anchor(pos);
+        // Cursor is at the boundary of a text node
+        // May need to consider pseudo elements
+        const nodes = this.getNodesAt(pos).filter((n) => this.isAnchorNode(n));
+        console.log({ offset }, ...nodes);
+        if (nodes.length === 0)
+            crash("Expect at least one node at this position");
+        if (nodes.length === 1) return new Anchor(pos);
+        // Found at least 2 nodes at this position
+        if (!nodes.includes(node)) crash("Node not found at this position");
+        const index = nodes.indexOf(node);
+        if (index < 0) return new Anchor(pos + index);
+        if (index >= nodes.length)
+            return new Anchor(pos + index - nodes.length + 1);
+        return new Anchor(pos, index);
     }
-    return node;
+    /**
+     * Given an Anchor position (offset + pseudo), find the corresponding
+     * DOM node and offset within that node.
+     */
+    setAnchor(anchor: Anchor): [Node, number | null] | null {
+        // delete this.autocomplete;
+        const { pos, pseudo } = anchor;
+        const nodes = this.getNodesAt(pos).filter((n) => this.isAnchorNode(n));
+        if (nodes.length === 0) return null;
+        if (nodes.length === 1) {
+            (anchor as any).pseudo = null;
+            return [nodes[0], pos - this.get(nodes[0]).segment.start];
+        }
+        console.log("nodes", ...nodes);
+        if (!pseudo) {
+            const hint = this.get(nodes[1]).segment;
+            console.log("hint", hint);
+            if (Hint.isInteractive(hint)) this.autocomplete = hint.accept;
+        }
+        const node = nodes.at(clamp(pseudo ?? 0, [0, nodes.length - 1]))!;
+        if (node === nodes.at(0) || node === nodes.at(-1))
+            return [node, pos - this.get(node).segment.start];
+        return [node, null];
+    }
+    getCursor(selection: Selection | null, prev: Cursor | null = null) {
+        if (!selection) return null;
+        const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
+        const start = this.getAnchor(
+            anchorNode,
+            anchorOffset,
+            prev && prev.start
+        );
+        if (!start) return null;
+        const end = this.getAnchor(focusNode, focusOffset, prev && prev.end);
+        if (!end) return null;
+        return new Cursor(start, end);
+    }
+    putCursor(selection: Selection | null = window.getSelection()) {
+        const { cursor } = this.code;
+        if (!cursor || !selection) return;
+        selection.removeAllRanges();
+        const start = this.setAnchor(cursor.start);
+        if (!start) return;
+        const [start_node, start_offset] = start;
+        if (cursor.start.compare(cursor.end) === 0 && start_offset === null)
+            return this.focusPseudo(start_node);
+        if (start_offset === null) crash("Cannot select to pseudo element");
+        selection.collapse(start_node, start_offset);
+        // Collapsed selection
+        if (cursor.start.compare(cursor.end) === 0) return;
+        // Range selection
+        const end = this.setAnchor(cursor.end);
+        if (!end) return;
+        const [end_node, end_offset] = end;
+        if (end_offset === null) crash("Cannot select to pseudo element");
+        selection.extend(end_node, end_offset);
+    }
+    focusPseudo(node: Node) {
+        const el = node instanceof HTMLElement ? node : node.parentElement;
+        if (!el) crash("Pseudo element has no container");
+        el.setAttribute("tabindex", "-1");
+        el.focus();
+        if (document.activeElement !== el)
+            crash("Failed to focus pseudo element");
+        return;
+    }
+}
+
+class Parser {
+    public nest: number = 0;
+    constructor(public readonly ast: AST) {}
+    private parsed = new WeakSet<Block>();
+    parse(block: Block, parent: TreeNode) {
+        if (this.parsed.has(block)) crash("Block already parsed", this.parse);
+        this.parsed.add(block);
+        const node = new TreeNode.Span(parent, block, block.attrs);
+        try {
+            for (const element of block.parse()) {
+                if (element instanceof Token)
+                    node.push(new TreeNode.Span(node, element, element.attrs));
+                else if (element instanceof Hint)
+                    node.push(createHintNode(node, element));
+                else node.push(this.parse(element, node));
+            }
+        } catch (error) {
+            console.error("Error while parsing block:", error);
+        }
+        return node;
+    }
 }
 
 export abstract class TreeNode<
@@ -148,23 +294,21 @@ export abstract class TreeNode<
     }
 }
 
-abstract class DOMTreeNode<
-    T extends HTMLElement = HTMLElement,
-> extends TreeNode<T> {
+abstract class DOMTreeNode<T extends HTMLElement> extends TreeNode<T> {
     abstract tagName: string;
     get el(): T {
         if (!this.element) {
             // Create new element
             const el = document.createElement(this.tagName) as T;
-            for (const [k, v] of Object.entries({
-                class: (this.segment as any).type,
-                ...this.attrs,
-            })) {
+            for (const [k, v] of Object.entries(this.attrs)) {
                 if (v === undefined) continue;
                 else if (typeof v === "boolean") el.toggleAttribute(k, v);
                 else if (Array.isArray(v)) el.setAttribute(k, v.join(" "));
                 else el.setAttribute(k, v);
             }
+            el.classList.add(
+                ...[(this.segment as any).type ?? []].flat(Infinity)
+            );
             // Append children
             let { code, segment } = this;
             const insertions: [number, TreeNode][] = [];
@@ -195,7 +339,11 @@ abstract class DOMTreeNode<
             // Use the setter to register the new element
             this.el = el;
         }
-        return this.element!;
+        // Apply attributes
+        const element = this.element!;
+        if (this.segment.focused) element.classList.add("focus");
+        else element.classList.remove("focus");
+        return element;
     }
     set el(el: T | null) {
         this.setElement(el);
@@ -212,19 +360,61 @@ class SpanNode extends DOMTreeNode<HTMLSpanElement> {
 }
 TreeNode.Span = SpanNode;
 
-class TextNode extends TreeNode<Text> {
+class TextNode extends TreeNode<Text | HTMLElement> {
     constructor(parent: TreeNode, segment: Segment) {
         super(parent, segment);
     }
-    get el(): Text {
-        if (!this.element) {
-            // Use the setter to register the new element
-            this.el = document.createTextNode(this.segment.text);
-        }
+    get el(): Text | HTMLElement {
+        if (this.element) return this.element;
+        this.el = document.createTextNode(this.segment.text);
         return this.element!;
     }
-    set el(el: Text | null) {
+    set el(el: Text | HTMLElement | null) {
         this.setElement(el);
     }
 }
 TreeNode.Text = TextNode;
+
+class RootNode extends TreeNode.Div {
+    readonly attrs = { contenteditable: true, class: "editor root" };
+    constructor(segment: Segment) {
+        super(null, segment);
+    }
+}
+
+function createHintNode(parent: TreeNode, block: Hint) {
+    const { code } = block;
+    const node = new TreeNode.Span(parent, block, block.attrs);
+    const el = document.createElement("span");
+    el.classList = ["hint", block.type]
+        .flat(Infinity)
+        .filter(Boolean)
+        .join(" ");
+    el.contentEditable = "false";
+    el.style.userSelect = "none";
+    el.setAttribute("aria-hidden", "true");
+    el.setAttribute("data-preview", block.hint);
+    const { accept } = block;
+    if (accept) {
+        el.classList.add("interactive");
+        el.setAttribute("data-hint", "Accept Suggestion");
+        el.addEventListener("click", accept);
+    } else {
+        el.toggleAttribute("disabled", true);
+    }
+    el.addEventListener("keydown", (e) => {
+        e.preventDefault();
+        switch (e.key) {
+            case "ArrowLeft":
+                return code.update(code.source, code.cursor?.move(0, -1));
+            case "ArrowRight":
+                return code.update(code.source, code.cursor?.move(0, +1));
+            case " ":
+            case "Tab":
+            case "Enter":
+                return accept?.();
+        }
+    });
+    node.el = el;
+    return node;
+}

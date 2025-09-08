@@ -4,19 +4,31 @@
 // You may find the full license in project root directory.
 // -------------------------------------------------------
 
-import { computed, markRaw, Ref, ref, ShallowRef, watch } from "vue";
+import { computed, markRaw, ref, ShallowRef, watch } from "vue";
 import { Awaitable, Sequence } from "./types";
 
+export function crash(message: string, capture?: Function): never {
+    const error = new Error(message);
+    Error.captureStackTrace?.(error, capture ?? crash);
+    throw error;
+}
+
 export function defer<T = any>() {
-    let resolve: (value: T) => void, reject: (reason?: any) => void;
+    type Resolve = (value: T) => void;
+    type Reject = (reason?: any) => void;
+    let resolve: Resolve, reject: Reject;
     const promise = new Promise<T>((res, rej) => {
         resolve = res;
         reject = rej;
     });
-    return {
+    return Object.assign([promise, resolve!, reject!], {
         promise,
         resolve: resolve!,
         reject: reject!,
+    }) as [Promise<T>, Resolve, Reject] & {
+        promise: Promise<T>;
+        resolve: Resolve;
+        reject: Reject;
     };
 }
 
@@ -304,4 +316,50 @@ export function reverse<T>(sequence: Sequence<T>) {
             }
         },
     };
+}
+
+export function nextTick() {
+    return new Promise<void>((resolve) => queueMicrotask(resolve));
+}
+
+export function getCurrentSelection(): Partial<Selection> | null {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
+    if (!anchorNode || !focusNode) return null;
+    return { anchorNode, anchorOffset, focusNode, focusOffset };
+}
+
+export function getCursorOffset(el: Node, offset: number) {
+    if (el.nodeType === Node.TEXT_NODE) {
+        return offset;
+    } else if (el.nodeType === Node.ELEMENT_NODE) {
+        let pos = 0;
+        for (let i = 0; i < offset; i++) {
+            const child = el.childNodes[i];
+            pos += child?.textContent?.length ?? 0;
+        }
+        return pos;
+    } else {
+        crash(`Unsupported node ${el}`, getCursorOffset);
+    }
+}
+
+export function signedNumber(val: number, sign_zero: string = "") {
+    const result = Math.abs(val).toString();
+    return ["-", sign_zero, "+"][Math.sign(val) + 1] + result;
+}
+
+export function parseIntStrict(s: string, radix?: number) {
+    if (!/^[+-]?\d+$/.test(s.trim())) return null;
+    const result = parseInt(s, radix);
+    if (isNaN(result)) return null;
+    return result;
+}
+
+export function parseFloatStrict(s: string) {
+    if (!/^[+-]?\d+(\.\d+)?$/.test(s.trim())) return null;
+    const result = parseFloat(s);
+    if (isNaN(result)) return null;
+    return result;
 }

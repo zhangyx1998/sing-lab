@@ -3,13 +3,13 @@
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
 // -------------------------------------------------------
-
-export default class Code {
+export default class Code extends EventTarget {
     cursor: BoundCursor | null = null;
     constructor(
         public readonly source: string,
         cursor: Cursor | null = null
     ) {
+        super();
         if (cursor) this.cursor = cursor.bind(this);
     }
     get start() {
@@ -24,16 +24,26 @@ export default class Code {
     segment(start: number = 0, end?: number) {
         return new Segment(this, start, end);
     }
+    update(source: string, cursor: Cursor | null = null) {
+        const code = new Code(source, cursor);
+        this.dispatchEvent(new CustomEvent("update", { detail: code }));
+        return code;
+    }
+    insert(pos: number, text: string) {
+        const [before, after] = this.segment().divide(pos);
+        return this.update(before.text + text + after.text, Cursor.at(pos + text.length));
+    }
 }
 
 export class Segment<T extends string = string> {
     static merge(...args: (Segment | null)[]) {
-        const segments = args.filter(a => a instanceof Segment);
+        const segments = args.filter((a) => a instanceof Segment);
         if (segments.length === 0) throw new Error("No segments to merge");
-        const code_set = new Set(segments.map(s => s.code));
-        if (code_set.size !== 1) throw new Error("Cannot merge segments from different codes");
-        const start = Math.min(...segments.map(s => s.start));
-        const end = Math.max(...segments.map(s => s.end));
+        const code_set = new Set(segments.map((s) => s.code));
+        if (code_set.size !== 1)
+            throw new Error("Cannot merge segments from different codes");
+        const start = Math.min(...segments.map((s) => s.start));
+        const end = Math.max(...segments.map((s) => s.end));
         return new Segment(segments[0].code, start, end);
     }
     toString(): T {
@@ -150,18 +160,24 @@ export class Segment<T extends string = string> {
         return this.trimStart(multiline).trimEnd(multiline);
     }
     at(pos: number) {
+        if (pos < 0) pos = this.length + pos;
         return this.slice(pos, pos + 1).text;
     }
-    slice<P extends string>(start: number, end: number = this.length): Segment<P> {
+    slice<P extends string>(
+        start: number,
+        end: number = this.length
+    ): Segment<P> {
         const { code, length } = this;
-        if (start < 0) start = length + start;
-        if (end < 0) end = length + end;
+        if (start < 0) start = (length || 1) + start;
+        if (end < 0) end = (length || 1) + end;
         if (start >= end) end = start;
         if (start < 0 || end < 0 || start > length || end > length) {
-            console.log(this.text, length, [start, end]);
             throw new Error("Segment slice index out of range");
         }
         return new Segment(code, this.start + start, this.start + end);
+    }
+    divide(pos: number): [Segment, Segment] {
+        return [this.slice(0, pos), this.slice(pos)];
     }
     // Merge with another segment, returning a new segment.
     // Items between the two segments are included when not forcing consecutiveness.
@@ -195,54 +211,107 @@ export class Segment<T extends string = string> {
     get clone() {
         return new Segment(this.code, this.start, this.end);
     }
+    get focused() {
+        return this.code.cursor?.intersect(this) ?? false;
+    }
 }
-
+export class Anchor {
+    constructor(
+        public readonly pos: number,
+        public readonly pseudo: number | null = null
+    ) {}
+    compare(other: Anchor) {
+        if (this === other) return 0;
+        if (this.pos < other.pos) return -1;
+        if (this.pos > other.pos) return 1;
+        return Math.sign((this.pseudo ?? 0) - (other.pseudo ?? 0));
+    }
+    toString() {
+        if (this.pseudo === null) return `${this.pos}`;
+        return `${this.pos}:${this.pseudo}`;
+    }
+}
 export class Cursor {
-    public readonly start: number;
-    public readonly end: number;
-    constructor(start: number, end?: number) {
+    public readonly start: Anchor;
+    public readonly end: Anchor;
+    constructor(start: Anchor, end?: Anchor) {
         this.start = start;
         this.end = end ?? start;
     }
     get length() {
-        return this.right - this.left;
+        return this.right.pos - this.left.pos;
     }
     get collapsed() {
         return this.length === 0;
     }
     get left() {
-        return Math.min(this.start, this.end);
+        return this.start.compare(this.end) <= 0 ? this.start : this.end;
     }
     get right() {
-        return Math.max(this.start, this.end);
+        return this.start.compare(this.end) >= 0 ? this.start : this.end;
     }
     bind(code: Code) {
         return new BoundCursor(this, code);
     }
     equal(other: Cursor | null) {
         if (!other) return false;
-        return this.start === other.start && this.end === other.end;
+        return (
+            this.start.compare(other.start) === 0 &&
+            this.end.compare(other.end) === 0
+        );
+    }
+    intersect(seg: Segment) {
+        const { left, right } = this;
+        const { start, end } = seg;
+        return left.pos <= end && start <= right.pos;
+    }
+    move(delta_pos: number, delta_pseudo: number = 0) {
+        const start = new Anchor(
+            this.start.pos + delta_pos,
+            this.start.pseudo !== null ? this.start.pseudo + delta_pseudo : null
+        );
+        if (this.start.compare(this.end) === 0) return new Cursor(start, start);
+        const end = new Anchor(
+            this.end.pos + delta_pos,
+            this.end.pseudo !== null ? this.end.pseudo + delta_pseudo : null
+        );
+        return new Cursor(start, end);
+    }
+    toString() {
+        return `[${this.left}, ${this.right}]`;
+    }
+    static fromSegment({ start, end }: Segment) {
+        return new Cursor(new Anchor(start), new Anchor(end));
+    }
+    static at(pos: number) {
+        return new Cursor(new Anchor(pos));
+    }
+    static equal(a: Cursor | null, b: Cursor | null) {
+        if (a === b) return true;
+        if (!a || !b) return false;
+        return a.equal(b);
     }
 }
 
-class BoundCursor extends Cursor {
+export class BoundCursor extends Cursor {
     constructor(
         cursor: Cursor,
-        public readonly code: Code
+        public readonly code: Code,
+        public readonly prev?: Cursor
     ) {
-        if (code.source.length + 1 < cursor.right)
+        if (code.source.length + 1 < cursor.right.pos)
             throw new Error(
                 `Cursor out of range: ${[cursor.left, cursor.right]} ${code.source.length}`
             );
         super(cursor.start, cursor.end);
     }
     get before() {
-        return this.code.segment(0, this.left).text;
+        return this.code.segment(0, this.left.pos).text;
     }
     get selected() {
-        return this.code.segment(this.left, this.right).text;
+        return this.code.segment(this.left.pos, this.right.pos).text;
     }
     get after() {
-        return this.code.segment(this.right, this.code.length).text;
+        return this.code.segment(this.right.pos, this.code.length).text;
     }
 }

@@ -1,0 +1,285 @@
+// ------------------------------------------------------
+// Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
+// This source code is licensed under the MIT license.
+// You may find the full license in project root directory.
+// -------------------------------------------------------
+
+.editor.root {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    padding: 1em;
+    overflow: scroll;
+    text-wrap: nowrap;
+    white-space: nowrap;
+    font-family: "Cascadia Code", "Courier New", Courier, "Consolas", monospace;
+    white-space: pre;
+    caret-color: white;
+    user-select: text;
+
+    * {
+        position: relative;
+        overflow: visible;
+    }
+
+    *::before,
+    *::after {
+        pointer-events: none;
+        user-select: none;
+    }
+
+    *[disabled] {
+        pointer-events: none;
+    }
+
+    --delim-color-1: rgb(246, 212, 58);
+    --delim-color-2: rgb(198, 107, 203);
+    --delim-color-3: rgb(72, 145, 248);
+    --delim-color: var(--delim-color-1);
+
+    .delimiter {
+        color: var(--delim-color);
+    }
+
+    .hint.indent {
+        background: none;
+        padding: none;
+        margin: none;
+        color: unset;
+        pointer-events: none;
+    }
+
+    .meta {
+        line-height: 1.4em;
+
+        .entry.unused {
+            color: #AAA;
+            filter: brightness(0.8);
+            
+            &:not(.focus) {
+                filter: brightness(0.5);
+                text-decoration: line-through;
+            }
+        }
+
+        .key {
+            color: #a1d4fa;
+        }
+
+        .entry:not(.invalid) .val {
+            color: #bd8970;
+
+            &.number,
+            &.meter {
+                color: #b1c7a1;
+            }
+
+            &>.note {
+                color: #67b5fa;
+            }
+        }
+
+        .entry.invalid .val:not(.hint) {
+            color: #F88;
+        }
+
+        .hint {
+            color: #AAA;
+        }
+
+        .hint.unit {
+            background: none;
+            padding: 0 1ch;
+            font-style: italic;
+            color: #888;
+        }
+
+        .hint.interactive {
+            color: #AAA;
+        }
+
+        .delimiter {
+            color: gray;
+        }
+    }
+
+    .note {
+        &:not(.focus) {
+            .prefix {
+                font-size: 0;
+            }
+        }
+
+        &.focus {
+
+            .octave,
+            .suffix {
+                color: #67b5fa;
+            }
+
+            .prefix,
+            .pitch[data-above]::before,
+            .pitch[data-below]::after {
+                background-color: #FFF2;
+                color: rgb(102, 191, 168);
+            }
+        }
+
+        .octave {
+            display: inline-block;
+            font-size: 0.8em;
+            transform: translateY(+0.1em);
+        }
+
+        .suffix {
+            display: inline-block;
+            font-size: 0.8em;
+            transform: translateY(-0.3em);
+        }
+
+        .pitch[data-above]::before {
+            content: attr(data-above);
+            position: absolute;
+            top: calc(-1em - 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+        }
+
+        .pitch[data-below]::after {
+            content: attr(data-below);
+            position: absolute;
+            bottom: calc(-1em - 2px - var(--lv, 0) * 4px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+        }
+
+        &.invalid {
+            color: #F88;
+        }
+    }
+
+    .score {
+        line-height: 1.6em;
+        color: white;
+
+        .token.placeholder {
+            color: gray;
+        }
+
+        .notes {
+            .group .group .group-content {
+                &::after {
+                    position: absolute;
+                    content: '';
+                    left: 0;
+                    right: 0;
+                    bottom: calc(2px - 4px * var(--lv, 0));
+                    height: 1px;
+                    background: currentColor;
+                }
+
+                &.focus::after {
+                    background: var(--delim-color);
+                }
+            }
+        }
+
+        .lyrics {
+            color: #bd8970;
+        }
+
+        .note.rest,
+        .lyric.rest {
+            color: #888;
+        }
+
+        .group .delimiter {
+            font-size: 0;
+            filter: brightness(0.4)
+        }
+
+        .group.focus .delimiter {
+            font-size: unset;
+        }
+
+        .group.focus>.delimiter {
+            opacity: 1;
+        }
+    }
+
+    .hint {
+        user-select: none;
+        border-radius: 0.1em;
+
+        &.interactive {
+            cursor: pointer;
+
+            &:hover {
+                background-color: #222;
+                filter: brightness(1.2);
+            }
+
+            &:active,
+            &:focus {
+                outline: 2px solid #6AF;
+                opacity: 1;
+                filter: brightness(1.2);
+            }
+        }
+    }
+
+    [data-preview] {
+        filter: brightness(0.6);
+
+        &:hover::before,
+        &:active::before,
+        &:focus::before,
+        &:focus-within::before {
+            opacity: 1;
+        }
+
+        &::before {
+            content: attr(data-preview);
+        }
+    }
+
+    [data-hint] {
+        &::after {
+            content: attr(data-hint);
+            position: absolute;
+            bottom: calc(100%);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+            height: 1.4em;
+            line-height: 1.4em;
+            padding: 0 0.2em;
+            border-radius: 0.2em;
+            color: #AAA;
+            background: #222;
+            outline: 1px solid #444;
+            white-space: nowrap;
+            box-shadow: 0 0 4px #0008;
+            z-index: 9999;
+            opacity: 0;
+            transition: .2s opacity, .4s bottom;
+        }
+
+        &:not(:focus):not(:focus-within):hover::after {
+            transition-delay: .2s;
+        }
+
+        &:hover::after,
+        &:focus::after,
+        &:focus-within::after {
+            opacity: 1;
+            bottom: calc(100% + 0.4em);
+        }
+    }
+
+    .unknown {
+        color: #CAA;
+    }
+}

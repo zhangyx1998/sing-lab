@@ -6,10 +6,11 @@
 import { reverse } from "@lib/util.ts";
 import { Segment } from "./code.ts";
 
-type MatchResult<L extends string, R extends string> = {
+export type MatchResult<L extends string, R extends string> = {
     open: Segment<L> | L;
     content: Segment;
     close: Segment<R> | R;
+    remainder: Segment;
 };
 
 export default class Delimiter<
@@ -79,12 +80,14 @@ export default class Delimiter<
                 open: l!,
                 content: new Segment(segment.code, l!.end, r!.start),
                 close: r!,
+                remainder: segment,
             };
         } else {
             return {
                 open: stack[0],
-                content: new Segment(segment.code, stack[0].end, segment.end),
+                content: new Segment(segment.code, stack[0].end, segment.start),
                 close: this.left.get(stack[0].text) as R,
+                remainder: segment,
             };
         }
     }
@@ -96,3 +99,14 @@ export const brackets = new Delimiter(
     ["{", "}"],
     ["<", ">"]
 );
+
+export const quotes = new Delimiter(
+    ["'", "'"],
+    ['"', '"'],
+    ["`", "`"]
+);
+
+export const delimiters = new Delimiter(
+    ...brackets,
+    ...quotes
+)
