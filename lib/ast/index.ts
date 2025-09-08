@@ -180,16 +180,12 @@ export default class AST {
             return [node, pos - this.get(node).segment.start];
         return [node, null];
     }
-    getCursor(selection: Selection | null, prev: Cursor | null = null) {
+    getCursor(selection: Selection | null) {
         if (!selection) return null;
         const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
-        const start = this.getAnchor(
-            anchorNode,
-            anchorOffset,
-            prev && prev.start
-        );
+        const start = this.getAnchor(anchorNode, anchorOffset);
         if (!start) return null;
-        const end = this.getAnchor(focusNode, focusOffset, prev && prev.end);
+        const end = this.getAnchor(focusNode, focusOffset);
         if (!end) return null;
         return new Cursor(start, end);
     }
