@@ -6,7 +6,7 @@
 
 .editor.root {
     @import "editor.scss";
-    @import "meta-block.scss";
-    @import "score-block.scss";
+    @import "meta.scss";
+    @import "score.scss";
     @import "theme.scss";
 }

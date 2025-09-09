@@ -32,64 +32,6 @@
         pointer-events: none;
     }
 
-    .note {
-        &:not(.focus) {
-            .prefix {
-                font-size: 0;
-            }
-        }
-
-        &.focus {
-
-            .octave,
-            .suffix {
-                color: #67b5fa;
-            }
-
-            .prefix,
-            .pitch[data-above]::before,
-            .pitch[data-below]::after {
-                background-color: #FFF2;
-                color: rgb(102, 191, 168);
-            }
-        }
-
-        .octave {
-            display: inline-block;
-            font-size: 0.8em;
-            transform: translateY(+0.1em);
-        }
-
-        .suffix {
-            display: inline-block;
-            font-size: 0.8em;
-            transform: translateY(-0.3em);
-        }
-
-        .pitch[data-above]::before {
-            content: attr(data-above);
-            position: absolute;
-            top: calc(-1em - 2px);
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.8em;
-        }
-
-        .pitch[data-below]::after {
-            content: attr(data-below);
-            position: absolute;
-            bottom: calc(-1em - 2px - var(--lv, 0) * 4px);
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.8em;
-        }
-
-        &.invalid {
-            color: #F88;
-        }
-    }
-
-
     .hint {
         user-select: none;
         border-radius: 0.1em;
