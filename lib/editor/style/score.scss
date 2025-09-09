@@ -64,7 +64,7 @@
             font-size: unset;
         }
 
-        .pitch,
+        .note,
         .lyric {
             min-width: unset;
         }
@@ -112,7 +112,7 @@
     .pitch[data-above]::before {
         content: attr(data-above);
         position: absolute;
-        top: calc(-1em - 2px);
+        top: calc(-0.8em);
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.8em;
@@ -121,7 +121,7 @@
     .pitch[data-below]::after {
         content: attr(data-below);
         position: absolute;
-        bottom: calc(-1em - 2px - var(--lv, 0) * 4px);
+        bottom: calc(-0.8em - var(--lv, 0) * 4px);
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.8em;
