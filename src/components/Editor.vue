@@ -50,18 +50,14 @@ watch(
     { immediate: true }
 );
 watch(
-    () => editor.code,
-    (current, previous) => {
-        console.table({
-            start: {
-                "current": current.cursor?.start?.toString(),
-                "previous": previous.cursor?.start?.toString(),
-            },
-            end: {
-                "current": current.cursor?.end?.toString(),
-                "previous": previous.cursor?.end?.toString(),
-            },
-        });
-    }
+    () => editor.code.cursor ?? "[--]",
+    (current, previous) => console.log(
+        "CURSOR %c%s%c => %c%s",
+        "color: #F00",
+        previous.toString().padStart(10),
+        "",
+        "color: #0F0",
+        current.toString()
+    )
 )
 </script>

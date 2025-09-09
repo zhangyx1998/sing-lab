@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
 // -------------------------------------------------------
-import { reverse } from "@lib/util.ts";
+import { reverse } from "@lib/util";
 import { Segment } from "./code.ts";
 
 export type MatchResult<L extends string, R extends string> = {

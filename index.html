@@ -83,15 +83,15 @@ This is the entry point of the single page application.
                 background-color: transparent;
                 border: none;
                 outline: none;
-                --hover-color: #fff1;
-                --active-color: #fff2;
+                --color-hover: #fff1;
+                --color-active: #fff2;
 
                 &:hover {
-                    background-color: var(--hover-color);
+                    background-color: var(--color-hover);
                 }
 
                 &:active {
-                    background-color: var(--active-color);
+                    background-color: var(--color-active);
                 }
 
                 & > svg {
@@ -151,5 +151,6 @@ This is the entry point of the single page application.
             if (e.metaKey || e.ctrlKey) e.preventDefault();
         }
         document.addEventListener("wheel", preventZoom, { passive: false });
+        console.clear();
     </script>
 </html>

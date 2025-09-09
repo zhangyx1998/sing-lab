@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
 // -------------------------------------------------------
-import { crash, clamp, getCursorOffset } from "@lib/util.ts";
-import Code, { Segment, Anchor, Cursor } from "./code.ts";
+import { crash } from "@lib/util";
+import Code, { Segment } from "./code.ts";
 import {
     Block,
     Token,
@@ -68,7 +68,7 @@ export default class AST {
             const value = [...Object.keys(this.meta.flat)]
                 .map((k) => `${k}: `)
                 .join("\n");
-            hint.suggest(() => code.insert(0, `---\n${value}\n---\n`));
+            hint.suggest(() => code.insert(0, `---\n${value}\n---\n`).commit());
             const block = new MicroBlock([], remainder.slice(0, 0), hint);
             this.root.push(this.parse(block, this.root));
             remainder = remainder.trimStart(true);
@@ -116,6 +116,7 @@ export default class AST {
     // Selection related APIs
     getNodesAt(pos: number) {
         let p = 0;
+        const parents = new Set<Node>();
         const nodes: Node[] = [];
         for (const node of this.traverse()) {
             const { start, end } = this.get(node).segment;
@@ -126,115 +127,16 @@ export default class AST {
             }
             if (end < pos) continue;
             if (start > pos) break;
+            if (node.parentNode) parents.add(node.parentNode);
             nodes.push(node);
         }
-        return nodes;
+        return nodes.filter((n) => !parents.has(n));
     }
     isAnchorNode(node: Node) {
         return (
             node.nodeType === Node.TEXT_NODE ||
             Hint.isInteractive(this.get(node).segment)
         );
-    }
-    /**
-     * Given a DOM node and an offset within that node, find the corresponding
-     * Anchor position (offset + pseudo).
-     */
-    getAnchor(node: Node | null, offset: number): Anchor | null {
-        if (!node || !this.registry.has(node)) return null;
-        const block = this.get(node);
-        const pos = block.segment.start + getCursorOffset(node, offset);
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            const [left, right] = [
-                node.childNodes[offset - 1],
-                node.childNodes[offset],
-            ];
-            if (this.registry.get(left)?.segment instanceof Hint) node = left;
-            else if (this.registry.get(right)?.segment instanceof Hint)
-                node = right;
-            else crash("Cursor at non-anchor element node");
-            offset = 0;
-        }
-        // Fast path: quick check if cursor is inside a text node
-        if (offset > 0 && offset < block.segment.length)
-            // Cursor is inside a text node (not at boundary)
-            return new Anchor(pos);
-        // Cursor is at the boundary of a text node
-        // May need to consider pseudo elements
-        const nodes = this.getNodesAt(pos).filter((n) => this.isAnchorNode(n));
-        console.log({ offset }, ...nodes);
-        if (nodes.length === 0)
-            crash("Expect at least one node at this position");
-        if (nodes.length === 1) return new Anchor(pos);
-        // Found at least 2 nodes at this position
-        if (!nodes.includes(node)) crash("Node not found at this position");
-        const index = nodes.indexOf(node);
-        if (index < 0) return new Anchor(pos + index);
-        if (index >= nodes.length)
-            return new Anchor(pos + index - nodes.length + 1);
-        return new Anchor(pos, index);
-    }
-    /**
-     * Given an Anchor position (offset + pseudo), find the corresponding
-     * DOM node and offset within that node.
-     */
-    setAnchor(anchor: Anchor): [Node, number | null] | null {
-        // delete this.autocomplete;
-        const { pos, pseudo } = anchor;
-        const nodes = this.getNodesAt(pos).filter((n) => this.isAnchorNode(n));
-        if (nodes.length === 0) return null;
-        if (nodes.length === 1) {
-            (anchor as any).pseudo = null;
-            return [nodes[0], pos - this.get(nodes[0]).segment.start];
-        }
-        console.log("nodes", ...nodes);
-        if (!pseudo) {
-            const hint = this.get(nodes[1]).segment;
-            console.log("hint", hint);
-            if (Hint.isInteractive(hint)) this.autocomplete = hint.accept;
-        }
-        const node = nodes.at(clamp(pseudo ?? 0, [0, nodes.length - 1]))!;
-        if (node === nodes.at(0) || node === nodes.at(-1))
-            return [node, pos - this.get(node).segment.start];
-        return [node, null];
-    }
-    getCursor(selection: Selection | null) {
-        if (!selection) return null;
-        const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
-        const start = this.getAnchor(anchorNode, anchorOffset);
-        if (!start) return null;
-        const end = this.getAnchor(focusNode, focusOffset);
-        if (!end) return null;
-        return new Cursor(start, end);
-    }
-    putCursor(selection: Selection | null = window.getSelection()) {
-        const { cursor } = this.code;
-        if (!cursor || !selection) return;
-        selection.removeAllRanges();
-        const start = this.setAnchor(cursor.start);
-        if (!start) return;
-        const [start_node, start_offset] = start;
-        if (cursor.start.compare(cursor.end) === 0 && start_offset === null)
-            return this.focusPseudo(start_node);
-        if (start_offset === null) crash("Cannot select to pseudo element");
-        selection.collapse(start_node, start_offset);
-        // Collapsed selection
-        if (cursor.start.compare(cursor.end) === 0) return;
-        // Range selection
-        const end = this.setAnchor(cursor.end);
-        if (!end) return;
-        const [end_node, end_offset] = end;
-        if (end_offset === null) crash("Cannot select to pseudo element");
-        selection.extend(end_node, end_offset);
-    }
-    focusPseudo(node: Node) {
-        const el = node instanceof HTMLElement ? node : node.parentElement;
-        if (!el) crash("Pseudo element has no container");
-        el.setAttribute("tabindex", "-1");
-        el.focus();
-        if (document.activeElement !== el)
-            crash("Failed to focus pseudo element");
-        return;
     }
 }
 
@@ -397,9 +299,13 @@ function createHintNode(parent: TreeNode, block: Hint) {
         e.preventDefault();
         switch (e.key) {
             case "ArrowLeft":
-                return code.update(code.source, code.cursor?.move(0, -1));
+                return code
+                    .update(code.source, code.cursor?.move(0, -1))
+                    .commit();
             case "ArrowRight":
-                return code.update(code.source, code.cursor?.move(0, +1));
+                return code
+                    .update(code.source, code.cursor?.move(0, +1))
+                    .commit();
             case " ":
             case "Tab":
             case "Enter":

@@ -1,0 +1,25 @@
+// ------------------------------------------------------
+// Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
+// This source code is licensed under the MIT license.
+// You may find the full license in project root directory.
+// -------------------------------------------------------
+
+&,
+&.dark {
+    --color-delim-1: #f6d43a;
+    --color-delim-2: #c66bcb;
+    --color-delim-3: #4891f8;
+    --color-delim: var(--color-delim-1);
+
+    --color-unknown: #DD8888;
+}
+
+& {
+    .delimiter {
+        color: var(--color-delim);
+    }
+
+    .unknown {
+        color: var(--color-unknown);
+    }
+}

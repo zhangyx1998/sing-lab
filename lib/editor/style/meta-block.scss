@@ -1,0 +1,59 @@
+// ------------------------------------------------------
+// Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
+// This source code is licensed under the MIT license.
+// You may find the full license in project root directory.
+// -------------------------------------------------------
+
+& .meta {
+    line-height: 1.4em;
+
+    .entry.unused {
+        color: #AAA;
+        filter: brightness(0.8);
+
+        &:not(.focus) {
+            filter: brightness(0.5);
+            text-decoration: line-through;
+        }
+    }
+
+    .key {
+        color: #a1d4fa;
+    }
+
+    .entry:not(.invalid) .val {
+        color: #bd8970;
+
+        &.number,
+        &.meter {
+            color: #b1c7a1;
+        }
+
+        &>.note {
+            color: #67b5fa;
+        }
+    }
+
+    .entry.invalid .val:not(.hint) {
+        color: #F88;
+    }
+
+    .hint {
+        color: #AAA;
+    }
+
+    .hint.unit {
+        background: none;
+        padding: 0 1ch;
+        font-style: italic;
+        color: #888;
+    }
+
+    .hint.interactive {
+        color: #AAA;
+    }
+
+    .delimiter {
+        color: gray;
+    }
+}

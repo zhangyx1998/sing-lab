@@ -5,7 +5,7 @@
 // -------------------------------------------------------
 
 import { computed, markRaw, ref, ShallowRef, watch } from "vue";
-import { Awaitable, Sequence } from "./types";
+import { Awaitable, Sequence } from "../types";
 
 export function crash(message: string, capture?: Function): never {
     const error = new Error(message);
@@ -343,23 +343,4 @@ export function getCursorOffset(el: Node, offset: number) {
     } else {
         crash(`Unsupported node ${el}`, getCursorOffset);
     }
-}
-
-export function signedNumber(val: number, sign_zero: string = "") {
-    const result = Math.abs(val).toString();
-    return ["-", sign_zero, "+"][Math.sign(val) + 1] + result;
-}
-
-export function parseIntStrict(s: string, radix?: number) {
-    if (!/^[+-]?\d+$/.test(s.trim())) return null;
-    const result = parseInt(s, radix);
-    if (isNaN(result)) return null;
-    return result;
-}
-
-export function parseFloatStrict(s: string) {
-    if (!/^[+-]?\d+(\.\d+)?$/.test(s.trim())) return null;
-    const result = parseFloat(s);
-    if (isNaN(result)) return null;
-    return result;
 }

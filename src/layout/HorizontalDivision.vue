@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElementSize } from '@lib/util.ts';
+import { ElementSize } from '@lib/util';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 const props = defineProps({
     division: {

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
 // -------------------------------------------------------
-import { ref } from "vue";
+import { ref, markRaw } from "vue";
 import { defer, AsyncChain, cachedRef, Shared, renderTicks } from "./util";
 
 interface AudioFrame {
@@ -22,7 +22,7 @@ class CaptureLoop extends Shared {
         destroy: () => void
     ) {
         super(destroy);
-        this.chain = new AsyncChain<AudioFrame>();
+        this.chain = markRaw(new AsyncChain<AudioFrame>());
         this.worklet = new AudioWorkletNode(context, "echo-raw");
         this.worklet.port.onmessage = (e) => {
             const { timestamp, sampleRate, buffer } = e.data;
@@ -69,7 +69,7 @@ class AnalyzeLoop extends Shared {
         fft_size: number = 8192
     ) {
         super(destroy);
-        this.chain = new AsyncChain<AnalysisFrame>();
+        this.chain = markRaw(new AsyncChain<AnalysisFrame>());
         this.analyser = context.createAnalyser();
         this.analyser.fftSize = fft_size;
         context.createMediaStreamSource(stream).connect(this.analyser);

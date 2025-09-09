@@ -2,15 +2,20 @@
 // Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
-// -------------------------------------------------------
+
+import { crash } from "@lib/util";
+
 export default class Code extends EventTarget {
     cursor: BoundCursor | null = null;
+    private initiator: WeakRef<Code>;
     constructor(
         public readonly source: string,
-        cursor: Cursor | null = null
+        cursor: Cursor | null = null,
+        initiator?: WeakRef<Code>
     ) {
         super();
         if (cursor) this.cursor = cursor.bind(this);
+        this.initiator = initiator ?? new WeakRef(this);
     }
     get start() {
         return 0;
@@ -25,13 +30,40 @@ export default class Code extends EventTarget {
         return new Segment(this, start, end);
     }
     update(source: string, cursor: Cursor | null = null) {
-        const code = new Code(source, cursor);
+        const code = new Code(source, cursor, this.initiator);
         this.dispatchEvent(new CustomEvent("update", { detail: code }));
         return code;
     }
-    insert(pos: number, text: string) {
-        const [before, after] = this.segment().divide(pos);
-        return this.update(before.text + text + after.text, Cursor.at(pos + text.length));
+    insert(pos: number | null, text: string) {
+        let before!: Segment, after!: Segment;
+        if (pos === null) {
+            const { cursor } = this;
+            if (!cursor)
+                crash("Code does not have an active cursor", this.insert);
+            ({ before, after } = cursor);
+        } else {
+            [before, after] = this.segment().divide(pos);
+        }
+        return new Code(
+            before.text + text + after.text,
+            Cursor.at(before.length + text.length),
+            this.initiator
+        );
+    }
+    delete(seg: Segment | null | undefined) {
+        if (!seg) return this;
+        if (seg.code !== this) crash("Segment outdated", this.delete);
+        return new Code(
+            this.source.slice(0, seg.start) + this.source.slice(seg.end),
+            Cursor.at(seg.start),
+            this.initiator
+        );
+    }
+    commit() {
+        const initiator = this.initiator.deref();
+        if (!initiator) crash("Code initiator has been released", this.commit);
+        initiator.dispatchEvent(new CustomEvent("update", { detail: this }));
+        if (initiator !== this) this.initiator = new WeakRef(initiator);
     }
 }
 
@@ -278,7 +310,8 @@ export class Cursor {
         return new Cursor(start, end);
     }
     toString() {
-        return `[${this.left}, ${this.right}]`;
+        if (this.length === 0) return `[${this.left.toString()}]`;
+        return `[${this.left} - ${this.right}]`;
     }
     static fromSegment({ start, end }: Segment) {
         return new Cursor(new Anchor(start), new Anchor(end));
@@ -306,12 +339,12 @@ export class BoundCursor extends Cursor {
         super(cursor.start, cursor.end);
     }
     get before() {
-        return this.code.segment(0, this.left.pos).text;
+        return this.code.segment(0, this.left.pos);
     }
     get selected() {
-        return this.code.segment(this.left.pos, this.right.pos).text;
+        return this.code.segment(this.left.pos, this.right.pos);
     }
     get after() {
-        return this.code.segment(this.right.pos, this.code.length).text;
+        return this.code.segment(this.right.pos, this.code.length);
     }
 }

@@ -4,10 +4,11 @@
 // You may find the full license in project root directory.
 // -------------------------------------------------------
 import { Pitch, absolute_scale, RelativeScale } from "@lib/pitch.ts";
-import { parseFloatStrict } from "@lib/util.ts";
-import { Segment } from "./code.ts";
+import { parseFloatStrict } from "@lib/util/string.ts";
+import Code, { Segment } from "./code.ts";
 import { brackets } from "./delimiter.ts";
 import AST from "./index.ts";
+import Debug from "@lib/util/debug.ts";
 
 export interface Block extends Segment {
     readonly type: string | string[];
@@ -93,6 +94,15 @@ type MetaDataHandler = (
     LF?: string
 ) => [boolean, ...(Token | Hint | Block)[]];
 
+function insert(el: Segment | Code, pos: number, text: string) {
+    const trace = Debug.trace(insert, { el, pos, text });
+    const code = el instanceof Code ? el : el.code;
+    return () => {
+        code.insert(pos, text).commit();
+        trace.print();
+    };
+}
+
 class MetaData {
     title = "New Music";
     #tonic: Pitch = absolute_scale.get("C4");
@@ -144,8 +154,7 @@ class MetaData {
                 m.title = s.text;
                 return [true, new Token(["val", "string"], s)];
             } else {
-                const { code } = s;
-                const action = () => code.insert(s.start, m.title + LF);
+                const action = insert(s, s.start, m.title + LF);
                 const hint = new Hint("string", s.slice(s.length), m.title);
                 return [false, hint.suggest(action)];
             }
@@ -157,7 +166,7 @@ class MetaData {
             if (s.length === 0) {
                 const val = absolute_scale.absoluteNameOf(m.tonic);
                 const hint = new Hint(["val", "note"], s.slice(0, 0), val);
-                ret.push(hint.suggest(() => s.code.insert(s.start, val + LF)));
+                ret.push(hint.suggest(insert(s, s.start, val + LF)));
             }
             return [valid, ...ret];
         },
@@ -171,7 +180,7 @@ class MetaData {
             if (s.length === 0) {
                 const val = m.meter.join("/");
                 const hint = new Hint(["val", "meter"], s.slice(0, 0), val);
-                ret.push(hint.suggest(() => s.code.insert(s.start, val + LF)));
+                ret.push(hint.suggest(insert(s, s.start, val + LF)));
             }
             return [!!res, ...ret];
         },
@@ -183,7 +192,7 @@ class MetaData {
             if (s.length === 0) {
                 const val = m.tempo.toString();
                 const hint = new Hint(["val", "number"], s.slice(0, 0), val);
-                ret.push(hint.suggest(() => s.code.insert(s.start, val + LF)));
+                ret.push(hint.suggest(insert(s, s.start, val + LF)));
             }
             ret.push(new Hint("unit", s.slice(s.length), `\tBeats per Minute`));
             return [valid, ...ret];
@@ -196,7 +205,7 @@ class MetaData {
             if (s.length === 0) {
                 const val = m.offset.toString();
                 const hint = new Hint(["val", "number"], s.slice(0, 0), val);
-                ret.push(hint.suggest(() => s.code.insert(s.start, val + LF)));
+                ret.push(hint.suggest(insert(s, s.start, val + LF)));
             }
             ret.push(new Hint("unit", s.slice(s.length), `\tSeconds`));
             return [valid, ...ret];
@@ -233,7 +242,6 @@ export class MetaCodeBlock extends CodeBlock {
         const remaining_keys = new Set<string>(
             Object.keys(MetaData.handler).filter((k) => !existing_keys.has(k))
         );
-        console.log({ existing_keys });
         function* infer(t: string) {
             for (const k in MetaData.handler) {
                 if (existing_keys.has(k)) continue;
@@ -271,14 +279,17 @@ export class MetaCodeBlock extends CodeBlock {
                         );
                     } else {
                         const ret: (Token | Hint)[] = [new Token("key", key)];
-                        // for (const k of infer(key.text)) {
-                        //     const loc = key.slice(key.length, key.length);
-                        //     const hint = new Hint("key", loc, k);
-                        //     const action = () =>
-                        //         code.insert(key.start, k.slice(key.text.length));
-                        //     ret.push(hint.suggest(action));
-                        //     break;
-                        // }
+                        for (const k of infer(key.text)) {
+                            const loc = key.slice(key.length, key.length);
+                            const hint = new Hint("key", loc, k);
+                            const action = insert(
+                                code,
+                                key.start,
+                                k.slice(key.text.length)
+                            );
+                            ret.push(hint.suggest(action));
+                            break;
+                        }
                         ret.push(
                             new Hint("indent", key.slice(key.length), `\t`)
                         );
@@ -303,8 +314,8 @@ export class MetaCodeBlock extends CodeBlock {
                         const pos = token.slice(token.length, token.length);
                         const hint = new Hint("key", pos, k + "\t: ");
                         return entry.push(
-                            hint.suggest(() =>
-                                code.insert(line.trim().end, k + ": ")
+                            hint.suggest(
+                                insert(code, line.trim().end, k + ": ")
                             )
                         );
                     }
@@ -317,7 +328,7 @@ export class MetaCodeBlock extends CodeBlock {
                             ["entry", "incomplete", "unused"],
                             line
                         );
-                        const action = () => code.insert(line.trim().end, ": ");
+                        const action = insert(code, line.trim().end, ": ");
                         return block.push(
                             new Token("key", line),
                             new Hint("sep", loc, "\t: ").suggest(action)
@@ -333,7 +344,7 @@ export class MetaCodeBlock extends CodeBlock {
                 delim_end.slice(0, 0),
                 `${meta.preview}\n`
             );
-            const action = () => code.insert(delim_end.start, `${meta}\n`);
+            const action = insert(code, delim_end.start, `${meta}\n`);
             contents.push(hint.suggest(action));
         }
         return [
@@ -389,7 +400,7 @@ class TokenGroup extends CodeBlock {
         return {
             style: [
                 `--lv: ${this.level};`,
-                `--delim-color: var(--delim-color-${((this.level - 1) % 3) + 1})`,
+                `--color-delim: var(--color-delim-${((this.level - 1) % 3) + 1})`,
             ],
         };
     }
@@ -451,7 +462,7 @@ class TokenGroup extends CodeBlock {
                 function handleDelimiter(pos: number, delim: string | Segment) {
                     if (delim instanceof Segment) return new Token(type, delim);
                     return new Hint(type, c.slice(pos, pos), delim).suggest(
-                        () => code.insert(c.start + pos, delim)
+                        insert(code, c.start + pos, delim)
                     );
                 }
                 contents.push(

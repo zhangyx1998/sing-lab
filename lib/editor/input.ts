@@ -16,62 +16,49 @@ export default function handleInput(
     let data = event.data ?? "";
     if (!code.cursor) return;
     const { before, selected, after } = code.cursor;
-    function commit(before: string, after: string) {
-        code.update(before + after, Cursor.at(before.length));
+    const [L, S, R] = [before.text, selected.text, after.text];
+    function commit(L: string, R: string) {
+        code.update(L + R, Cursor.at(L.length)).commit();
     }
     switch (inputType) {
         case "insertText":
-            if (
-                matchBrackets &&
-                selected.length &&
-                delimiters.left.has(data as any)
-            ) {
+            if (matchBrackets && S.length && delimiters.left.has(data as any)) {
                 const closing = delimiters.left.get(data as any)!;
-                return code.update(
-                    [before, data, selected, closing, after].join(""),
-                    code.cursor.move(data.length)
-                );
-            } else return commit(before + data, after);
+                return code
+                    .update(
+                        [L, data, S, closing, R].join(""),
+                        code.cursor.move(data.length)
+                    )
+                    .commit();
+            } else return commit(L + data, R);
         case "insertReplacementText":
         case "insertFromDrop":
         case "insertFromPaste":
         case "insertLink":
-            return commit(before + data, after);
+            return commit(L + data, R);
         case "insertParagraph":
         case "insertLineBreak":
-            return commit(before + "\n", after);
+            return commit(L + "\n", R);
         case "deleteByDrag":
-            return commit(before, after);
+            return commit(L, R);
         case "deleteContentBackward":
-            if (selected.length > 0) return commit(before, after);
-            return commit(before.slice(0, -1), after);
+            if (S.length > 0) return commit(L, R);
+            return commit(L.slice(0, -1), R);
         case "deleteWordBackward":
-            if (selected.length > 0) return commit(before, after);
-            return commit(
-                before.slice(0, countBack(before, createWordCounter())),
-                after
-            );
+            if (S.length > 0) return commit(L, R);
+            return commit(L.slice(0, countBack(L, createWordCounter())), R);
         case "deleteSoftLineBackward":
-            if (selected.length > 0) return commit(before, after);
-            return commit(
-                before.slice(0, countBack(before, createLineCounter())),
-                after
-            );
+            if (S.length > 0) return commit(L, R);
+            return commit(L.slice(0, countBack(L, createLineCounter())), R);
         case "deleteContentForward":
-            if (selected.length > 0) return commit(before, after);
-            return commit(before, after.slice(1));
+            if (S.length > 0) return commit(L, R);
+            return commit(L, R.slice(1));
         case "deleteWordForward":
-            if (selected.length > 0) return commit(before, after);
-            return commit(
-                before,
-                after.slice(countForward(after, createWordCounter()))
-            );
+            if (S.length > 0) return commit(L, R);
+            return commit(L, R.slice(countForward(R, createWordCounter())));
         case "deleteSoftLineForward":
-            if (selected.length > 0) return commit(before, after);
-            return commit(
-                before,
-                after.slice(countForward(after, createLineCounter()))
-            );
+            if (S.length > 0) return commit(L, R);
+            return commit(L, R.slice(countForward(R, createLineCounter())));
         default:
             console.warn("Unhandled input type:", inputType, data);
     }
