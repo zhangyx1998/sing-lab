@@ -179,27 +179,27 @@ export default class Editor {
             );
             if (nodes.length === 1) return $(new Anchor(pos));
             // Found at least 2 nodes at this position, check if cursor is at boundary
-            if (node === nodes.at(0)) return $(new Anchor(pos));
-            if (node === nodes.at(-1))
-                return $(new Anchor(pos, nodes.length - 1));
-            // Now we are sure that cursor is at one of the middle (pseudo) nodes
             const pseudo_nodes = nodes.slice(1, -1);
+            const interactive_nodes = pseudo_nodes.filter((n) =>
+                Hint.isInteractive(ast.get(n).segment)
+            );
+            const pseudo_max = interactive_nodes.length + 1;
+            if (node === nodes.at(0)) return $(new Anchor(pos, 0));
+            if (node === nodes.at(-1))
+                return $(new Anchor(pos, pseudo_max, pseudo_max));
+            // Now we are sure that cursor is at one of the middle (pseudo) nodes
             if (node.nodeType !== Node.ELEMENT_NODE)
                 crash("Expect node to be the container of pseudo elements");
             const [l, r] = [
                 node.childNodes[offset - 1],
                 node.childNodes[offset],
             ];
-            if (l === nodes.at(0))
+            if (r === pseudo_nodes.at(0))
                 // User pressed right arrow at end of left text node
                 return $(new Anchor(pos, 1));
-            if (r === nodes.at(-1)) {
-                const count = pseudo_nodes.filter((n) =>
-                    Hint.isInteractive(ast.get(n).segment)
-                ).length;
+            if (l === pseudo_nodes.at(-1))
                 // User pressed left arrow at start of right text node
-                return $(new Anchor(pos, count));
-            }
+                return $(new Anchor(pos, pseudo_max - 1, pseudo_max));
             // Count interactive pseudo elements before the cursor
             let index = 1;
             for (const n of pseudo_nodes) {
@@ -207,7 +207,7 @@ export default class Editor {
                 if (Hint.isInteractive(ast.get(n).segment)) index++;
                 if (n === l) break;
             }
-            return $(new Anchor(pos, index));
+            return $(new Anchor(pos, index, pseudo_max));
         }
         crash("Unreachable");
     }

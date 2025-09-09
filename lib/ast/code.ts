@@ -250,7 +250,8 @@ export class Segment<T extends string = string> {
 export class Anchor {
     constructor(
         public readonly pos: number,
-        public readonly pseudo: number | null = null
+        public readonly pseudo: number | null = null,
+        public readonly pseudo_max: number | null = null,
     ) {}
     compare(other: Anchor) {
         if (this === other) return 0;

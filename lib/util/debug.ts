@@ -162,7 +162,7 @@ class Trace extends Error {
             } finally {
                 if (ret_frame) {
                     const contents = [
-                        "%creturn %c%o %c%s",
+                        "%creturn %c%o",
                         $("color: #b47eb5ff"),
                         $(""),
                         ret_value,
