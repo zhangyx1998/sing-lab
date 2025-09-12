@@ -172,15 +172,18 @@ function isFundamentalPitch(pitch: Pitch) {
 
 function handleScroll(event: WheelEvent) {
     if (props.freeze) return;
-    const { deltaX, deltaY, ctrlKey, metaKey, shiftKey } = event;
-    const [dX, dY] = shiftKey ? [deltaY, deltaX] : [deltaX, deltaY];
+    const { deltaX: dX, deltaY: dY, ctrlKey, metaKey, shiftKey, altKey } = event;
     if (ctrlKey || metaKey) {
-        // Zoom Horizontally (time domain)
-        const kf = Math.pow(2, dX / size.height);
-        props.viewPortFreqRange.frac_range *= kf;
-        // Zoom Vertically (frequency domain)
-        const kt = Math.pow(2, dY / size.width);
-        props.viewPortTimeRange.duration *= kt;
+        if (!shiftKey) {
+            // Zoom Horizontally (time domain)
+            const kf = Math.pow(2, (dX || dY) / size.height);
+            props.viewPortFreqRange.frac_range *= kf;
+        }
+        if (!altKey) {
+            // Zoom Vertically (frequency domain)
+            const kt = Math.pow(2, (dY || dX) / size.width);
+            props.viewPortTimeRange.duration *= kt;
+        }
     } else {
         // Pan X and Y
         const dt = props.viewPortTimeRange.duration * dX / size.width;

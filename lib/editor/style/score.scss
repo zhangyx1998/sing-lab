@@ -20,12 +20,13 @@
     }
 
     &::after {
-        z-index: -1;
-        pointer-events: none;
+        content: '';
         display: block;
         position: absolute;
-        content: '';
+        pointer-events: none;
+        user-select: none;
         border-radius: 0.4em;
+        z-index: -1;
         top: -0.4em;
         left: -0.4em;
         right: -0.4em;
