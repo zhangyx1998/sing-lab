@@ -24,6 +24,18 @@ You may find the full license in project root directory.
                 <line :x1="0" :y1="0" :x2="0" :y2="size.height" v-bind="cursorElement.label" stroke-width="6"
                     stroke="transparent" />
             </g>
+            <!-- Music Representation -->
+            <g v-if="music">
+                <g v-for="({ x1, x2, lx1, lx2, y, y1, y2, focused }, i) in displayProps(music.notes)" :key="i">
+                    <rect v-if="focused" class="note" :x="x1" :width="x2 - x1" :y="y1" :height="y2 - y1" fill="#FFF2"
+                        style="pointer-events: none;">
+                    </rect>
+                    <g v-if="y !== null">
+                        <line class="note" :x1="lx1" :y1="y" :x2="lx2" :y2="y" stroke="cyan" stroke-width="4"
+                            stroke-linecap="round" />
+                    </g>
+                </g>
+            </g>
             <!-- Tone Scale Backgrounds -->
             <rect class="pitch-scale" :x="0" :y="0" :width="scale_width" :height="size.height" fill="#222" />
             <rect class="pitch-scale" :x="w" :y="0" :width="scale_width" :height="size.height" fill="#222" />
@@ -106,6 +118,7 @@ import { computed, ref } from 'vue';
 import { Label } from '@lib/svg';
 import { Point } from '@lib/geometry';
 import { RTI } from '@lib/types';
+import Music, { MusicElement } from '@lib/music';
 
 const props = defineProps({
     freeze: { type: Boolean, default: false },
@@ -115,6 +128,11 @@ const props = defineProps({
     scale: {
         type: [AbsoluteScale, RelativeScale],
         default: absolute_scale,
+    },
+    music: {
+        type: Music,
+        optional: true,
+        default: null,
     },
     // bps: { type: Number, default: 120 },
     // tempo: { type: String, default: '4/4' },
@@ -205,4 +223,25 @@ const horizontal_lines = computed(() => Pitch.range(props.viewPortFreqRange).fil
     };
     return res;
 }))
+
+function displayProps<T extends MusicElement & { pitch?: Pitch | null }>(arr: T[], w: number = 4) {
+    const top = Pos.Y({ fractional: props.viewPortFreqRange.frac_upper });
+    const bottom = Pos.Y({ fractional: props.viewPortFreqRange.frac_lower });
+    return arr.map(el => {
+        const [s, e] = props.music.pos(el);
+        const y = el.pitch && Pos.Y(el.pitch);
+        const [x1, x2] = [Pos.X(s), Pos.X(e)];
+        return {
+            ...el,
+            x1,
+            x2,
+            lx1: Math.min(x1 + w / 2, (x1 + x2) / 2),
+            lx2: Math.max(x2 - w / 2, (x1 + x2) / 2),
+            y: y ?? null,
+            y1: top,
+            y2: bottom,
+            focused: el.block.focused
+        }
+    });
+}
 </script>

@@ -5,18 +5,18 @@
 // -------------------------------------------------------
 
 import { TimeRange, FreqRange, Cursor } from "@lib/ranges";
-import { Pitch } from "./pitch";
+import { absolute_scale } from "./pitch";
 
 export const cursor = new Cursor();
 
-export const viewPortTimeRange = new TimeRange(30);
+export const viewPortTimeRange = new TimeRange(10);
 export const viewPortFreqRange = new FreqRange(
-    Pitch.get(2, 6).frequency,
-    Pitch.get(5, 6).frequency
+    absolute_scale.get("C4").frequency,
+    absolute_scale.get("C7").frequency
 );
 
 export const recordingTimeRange = new TimeRange(0);
 export const recordingFreqRange = new FreqRange(
-    Pitch.get(2, 6).frequency,
-    Pitch.get(5, 6).frequency
+    absolute_scale.get("C2").frequency,
+    absolute_scale.get("C8").frequency
 );

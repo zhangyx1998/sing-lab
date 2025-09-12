@@ -49,8 +49,9 @@ export class Pitch {
         };
     }
     shift(delta: DeltaPitch): Pitch {
+        const carry = Math.floor((this.pitch + delta.pitch) / 12);
         return Pitch.get(
-            this.octave + delta.octave,
+            this.octave + delta.octave + carry,
             (this.pitch + delta.pitch + 12) % 12
         );
     }
@@ -220,6 +221,7 @@ export class RelativeScale implements IndexableScale {
         }
         const pitch = relative_names.findIndex((group) => group.includes(name));
         if (pitch === -1) return null;
+        console.log({ octave, pitch });
         return { octave, pitch };
     }
     static relativeNameOf(delta: DeltaPitch): string {

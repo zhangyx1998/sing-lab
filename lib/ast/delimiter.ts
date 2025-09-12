@@ -75,17 +75,19 @@ export default class Delimiter<
             // Not a delimiter, consume one character
             segment = segment.slice(1);
         }
+        const { code } = segment;
         if (stack.length === 0) {
             return {
                 open: l!,
-                content: new Segment(segment.code, l!.end, r!.start),
+                content: code.segment(l!.end, r!.start),
                 close: r!,
                 remainder: segment,
             };
         } else {
+            const content = code.segment(stack[0].end, segment.start);
             return {
                 open: stack[0],
-                content: new Segment(segment.code, stack[0].end, segment.start),
+                content: content.trimEnd(),
                 close: this.left.get(stack[0].text) as R,
                 remainder: segment,
             };
@@ -100,13 +102,6 @@ export const brackets = new Delimiter(
     ["<", ">"]
 );
 
-export const quotes = new Delimiter(
-    ["'", "'"],
-    ['"', '"'],
-    ["`", "`"]
-);
+export const quotes = new Delimiter(["'", "'"], ['"', '"'], ["`", "`"]);
 
-export const delimiters = new Delimiter(
-    ...brackets,
-    ...quotes
-)
+export const delimiters = new Delimiter(...brackets, ...quotes);

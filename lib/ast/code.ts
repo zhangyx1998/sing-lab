@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
 // This source code is licensed under the MIT license.
 // You may find the full license in project root directory.
+// ------------------------------------------------------
 
 import { crash } from "@lib/util";
 
@@ -118,6 +119,13 @@ export class Segment<T extends string = string> {
             this.start === other.start &&
             this.end === other.end
         );
+    }
+    // Peek in code context
+    get before() {
+        return this.code.segment(0, this.start);
+    }
+    get after() {
+        return this.code.segment(this.end);
     }
     /**
      * String APIs
@@ -251,7 +259,7 @@ export class Anchor {
     constructor(
         public readonly pos: number,
         public readonly pseudo: number | null = null,
-        public readonly pseudo_max: number | null = null,
+        public readonly pseudo_max: number | null = null
     ) {}
     compare(other: Anchor) {
         if (this === other) return 0;

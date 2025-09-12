@@ -10,6 +10,30 @@
         margin: 0.4em 0;
     }
 
+    &:hover::after,
+    &.focus::after {
+        background: #FFF1;
+    }
+
+    &.focus::after {
+        outline: 1px solid #FFF4;
+    }
+
+    &::after {
+        z-index: -1;
+        pointer-events: none;
+        display: block;
+        position: absolute;
+        content: '';
+        border-radius: 0.4em;
+        top: -0.4em;
+        left: -0.4em;
+        right: -0.4em;
+        bottom: -0.4em;
+    }
+
+    display: inline-block;
+    overflow: visible;
     color: white;
 
     .token.placeholder {
@@ -49,9 +73,12 @@
         text-align: center;
     }
 
-    .note.rest,
-    .lyric.rest {
+    .note.rest {
         color: #888;
+    }
+
+    .lyric.rest {
+        opacity: 0.2;
     }
 
     .group .delimiter {
@@ -60,6 +87,10 @@
     }
 
     .group.focus {
+        &>.delimiter {
+            filter: none;
+        }
+
         .delimiter {
             font-size: unset;
         }
@@ -67,6 +98,10 @@
         .note,
         .lyric {
             min-width: unset;
+        }
+
+        .lyric.rest {
+            opacity: unset;
         }
     }
 

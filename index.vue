@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import HorizontalDivision from '@src/layout/HorizontalDivision.vue';
 import Menubar from '@src/MenuBar.vue';
-import SideBar from '@src/SideBar.vue';
 import FootBar from '@src/FootBar.vue';
 import Monitor from '@src/Monitor.vue';
 import Scope from '@src/Scope.vue';
+import Editor from '@src/components/Editor.vue';
+
+import { ref } from 'vue';
+import Music from '@lib/music';
+const music = ref<null | Music>(null);
 </script>
 
 <template>
@@ -13,12 +17,14 @@ import Scope from '@src/Scope.vue';
     <HorizontalDivision class="main-layout">
         <template #left>
             <div class="vertical-division">
-                <Scope />
+                <Scope :music="music" />
                 <Monitor />
             </div>
         </template>
         <template #right>
-            <SideBar />
+            <div class="editor-container" style="padding: 0">
+                <Editor style="width: 100%; height: 100%;" @update:music="m => music = m" />
+            </div>
         </template>
     </HorizontalDivision>
 </template>

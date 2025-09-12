@@ -66,4 +66,7 @@ export default class Fractional {
         const that = new Fractional(other);
         return this.dividend === that.dividend && this.divisor === that.divisor;
     }
+    get float(): number {
+        return this.dividend / this.divisor;
+    }
 }

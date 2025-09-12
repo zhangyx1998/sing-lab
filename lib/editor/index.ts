@@ -154,8 +154,8 @@ export default class Editor {
     getAnchor(node: Node | null, offset: number): Anchor | null {
         const { ast } = this;
         if (!node || !ast.registry.has(node)) return null;
-        const block = ast.get(node);
-        const pos = block.segment.start + getCursorOffset(node, offset);
+        const { block } = ast.get(node);
+        const pos = block.start + getCursorOffset(node, offset);
         const trace = Debug.trace(this.getAnchor, {
             node: node.textContent,
             offset,
@@ -166,7 +166,7 @@ export default class Editor {
             if (
                 node.nodeType === Node.TEXT_NODE &&
                 offset > 0 &&
-                offset < block.segment.length
+                offset < block.length
             )
                 return $(new Anchor(pos));
             // Consider pseudo elements
@@ -181,7 +181,7 @@ export default class Editor {
             // Found at least 2 nodes at this position, check if cursor is at boundary
             const pseudo_nodes = nodes.slice(1, -1);
             const interactive_nodes = pseudo_nodes.filter((n) =>
-                Hint.isInteractive(ast.get(n).segment)
+                Hint.isInteractive(ast.get(n).block)
             );
             const pseudo_max = interactive_nodes.length + 1;
             if (node === nodes.at(0)) return $(new Anchor(pos, 0));
@@ -204,7 +204,7 @@ export default class Editor {
             let index = 1;
             for (const n of pseudo_nodes) {
                 if (n === r) break;
-                if (Hint.isInteractive(ast.get(n).segment)) index++;
+                if (Hint.isInteractive(ast.get(n).block)) index++;
                 if (n === l) break;
             }
             return $(new Anchor(pos, index, pseudo_max));
@@ -222,17 +222,17 @@ export default class Editor {
         if (nodes.length === 0) return null;
         if (nodes.length === 1) {
             (anchor as any).pseudo = null;
-            return [nodes[0], pos - ast.get(nodes[0]).segment.start];
+            return [nodes[0], pos - ast.get(nodes[0]).block.start];
         }
         console.log("nodes", ...nodes);
         if (!pseudo) {
-            const hint = ast.get(nodes[1]).segment;
+            const hint = ast.get(nodes[1]).block;
             console.log("hint", hint);
             if (Hint.isInteractive(hint)) ast.autocomplete = hint.accept;
         }
         const node = nodes.at(clamp(pseudo ?? 0, [0, nodes.length - 1]))!;
         if (node === nodes.at(0) || node === nodes.at(-1))
-            return [node, pos - ast.get(node).segment.start];
+            return [node, pos - ast.get(node).block.start];
         return [node, null];
     }
     getCursor(selection: Selection | null) {

@@ -66,7 +66,7 @@ class AnalyzeLoop extends Shared {
         context: AudioContext,
         stream: MediaStream,
         destroy: () => void,
-        fft_size: number = 8192
+        fft_size: number = 8192 // 44100
     ) {
         super(destroy);
         this.chain = markRaw(new AsyncChain<AnalysisFrame>());
