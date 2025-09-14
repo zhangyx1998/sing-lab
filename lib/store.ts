@@ -11,8 +11,8 @@ export const cursor = new Cursor();
 
 export const viewPortTimeRange = new TimeRange(10);
 export const viewPortFreqRange = new FreqRange(
-    absolute_scale.get("C4").frequency,
-    absolute_scale.get("C7").frequency
+    absolute_scale.get("C3").frequency,
+    absolute_scale.get("C5").frequency
 );
 
 export const recordingTimeRange = new TimeRange(0);

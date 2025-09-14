@@ -1,0 +1,75 @@
+<!------------------------------------------------------
+Copyright (c) 2025 Yuxuan Zhang, sing-lab@z-yx.cc
+This source code is licensed under the MIT license.
+You may find the full license in project root directory.
+--------------------------------------------------------
+This is the entry point of the single page application.
+------------------------------------------------------->
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, user-scalable=no"
+        />
+        <meta name="color-scheme" content="dark light" />
+        <title>Score Converter | Jianpu.Space</title>
+        <style>
+            #src {
+                padding: 1em;
+                white-space: pre;
+            }
+            #src:empty:not(:focus)::before {
+                content: "Enter your score here...";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: #888;
+                user-select: none;
+            }
+            .banner {
+                position: fixed;
+                top: 0;
+                width: 50vw;
+                height: 2rem;
+                line-height: 2rem;
+                color: white;
+                text-align: center;
+                font-family: system-ui, sans-serif;
+            }
+            .code {
+                position: fixed;
+                box-sizing: border-box;
+                top: 2rem;
+                bottom: 0;
+                width: 50vw;
+                margin: 0;
+                overflow: scroll;
+                font-family:
+                    "Cascadia Code", "Consolas", "Courier New", monospace;
+            }
+            .italic {
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body oncontextmenu="return false;">
+        <div class="banner" style="left: 0">
+            <a href="https://jianpu.space">Jianpu.space</a> style score
+        </div>
+        <div class="banner" style="right: 0">
+            <span class="italic">Sing Lab</span> - Score Markdown (Converted)
+        </div>
+        <div id="src" class="code" style="left: 0" contenteditable></div>
+        <div
+            id="dst"
+            class="code"
+            style="right: 0; background-color: #fff1"
+        ></div>
+    </body>
+    <script type="module" src="jianpu.space.ts"></script>
+</html>

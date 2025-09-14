@@ -13,6 +13,8 @@ import type {
 import { Group } from "@lib/ast/syntax";
 import { markRaw } from "vue";
 import Fractional from "./fractional";
+import * as Tone from "tone";
+import { defer } from "./util";
 
 export abstract class MusicElement<T extends Block = Block> {
     constructor(
@@ -79,7 +81,9 @@ export default class Music {
     get meta() {
         return this.ast.meta;
     }
+    readonly beat_duration: number;
     constructor(public readonly ast: AST) {
+        this.beat_duration = 60.0 / this.meta.tempo;
         const beats_per_bar = this.meta.meter[0];
         let t_blk = new Fractional(0),
             t_bar: Fractional,
@@ -114,10 +118,43 @@ export default class Music {
         return markRaw(this);
     }
     pos({ t0, dt }: MusicElement) {
-        const { tempo } = this.meta;
-        const k = 60.0 / tempo; // duration of one beat in seconds
+        const k = this.beat_duration;
         const s = t0.float * k;
-        const e = s + dt.float * k;
-        return [s, e]; // [start time, end time]
+        const d = dt.float * k;
+        const e = s + d;
+        return [s, d, e]; // [start time, end time]
+    }
+    async play(abort_signal?: AbortSignal) {
+        await tone_started;
+        const t0 = Tone.now() + 0.1;
+        for (const note of this.notes) {
+            if (abort_signal?.aborted) break;
+            const [start, duration] = this.pos(note);
+            const freq = note.pitch?.frequency;
+            if (freq) sampler.triggerAttackRelease(freq, duration, t0 + start);
+        }
     }
 }
+
+const tone_started = (async () => {
+    const { promise, resolve } = defer<void>();
+    window.addEventListener(
+        "click",
+        () => {
+            Tone.start();
+            resolve();
+        },
+        { once: true }
+    );
+    return promise;
+})();
+
+const urls = (await import("@sound-samples:piano")).default;
+const sampler = new Tone.Sampler({ urls });
+const reverb = new Tone.Reverb({
+    decay: 2.8,
+    preDelay: 0.02,
+    wet: 0.18,
+}).toDestination();
+const eq = new Tone.EQ3({ low: -1, mid: 0, high: +0.5 }).connect(reverb);
+sampler.connect(eq);

@@ -118,10 +118,14 @@ export default class Editor {
     render(target: HTMLElement | null) {
         for (const _ of Debug.trace(this.render, [target?.tagName]).capture()) {
             if (!target) return;
+            const scrollTop = target.children[0]?.scrollTop ?? 0;;
             for (const child of target.children) target.removeChild(child);
-            target.appendChild(this.ast.root.el);
+            const { el } = this.ast.root;
+            target.appendChild(el);
             this.putCursor();
             this.current_selection = getCurrentSelection();
+            el.scrollTop = scrollTop;
+            console.log(el)
         }
     }
 

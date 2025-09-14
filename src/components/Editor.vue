@@ -12,38 +12,10 @@ You may find the full license in project root directory.
 import Editor from "@lib/editor";
 import Music from "@lib/music";
 import { onMounted, onUnmounted, useTemplateRef, watch } from "vue";
+import source from "@text:examples/永不失联的爱.smd";
 const emit = defineEmits<{
     (e: "update:music", music: Music): void;
 }>();
-
-const source = `
----
-title: 永不失联的爱
-tonic: B4b
-meter: 4/4
-tempo: 85
-offset: 0.0
-unused: xxx
----
-
-| (0 5) (^1 ^2) (^3 ^2) (^1 7) | (6 ^2) ^2 - - |
-| (0 亲) (爱 的) (你 躲) (在 哪) | (里 发) 呆 - - |
-
-| (0 5) (7 ^1) (^2 ^1) (7 5) | (3 ^1) ^1 - - |
-| (0 有) (什 么) (心 事) (还 无) | (法 释) 怀 - - |
-
-| (0 5) (^1 ^2) (^3 ^2) (^1 7) | (6 ^2) ^2 - - |
-| (0 我) (们 总) (把 人) (生 想) | (的 太) 坏 - - |
-
-| (0 ^1) (^2 ^1) (^2 ^1) (^2 ^1) | (^2 ^5) ^5 - - |
-| (0 像) (旁 人) (不 允) (许 我) | (们 的) 怪 - - |
-
-| (0 ^3) (^3 ^4) (^5 ^4) (^3 ^1) | (6 ^4) ^4 - 0 |
-| (0 每) (一 片) (与 众) (不 同) | (的 云) 彩 - - |
-
-# Comment line starts with '#'
-| ((_0# ^0b) _0) 0 0# 0b | 0 0 - - |
-`;
 const container = useTemplateRef<HTMLElement>("container");
 const editor = new Editor(source.trim() + "\n");
 const updateCursor = editor.updateCursor.bind(editor);

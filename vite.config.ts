@@ -5,16 +5,24 @@
 // --------------------------------------------------------
 // This is the entry point of the single page application.
 // -------------------------------------------------------
+import { resolve } from "path";
+import { fileURLToPath } from "url";
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
+
+import SoundSampleLoader from "./scripts/sound-sample-loader";
+import TextLoader from "./scripts/text-loader";
+
 const PROJECT_ROOT = resolve(fileURLToPath(import.meta.url), "..");
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [vue()],
+    plugins: [
+        vue(),
+        TextLoader(),
+        SoundSampleLoader("@sound-samples:piano", "public/audio/piano"),
+    ],
     build: {
         outDir: resolve(PROJECT_ROOT, "dist"),
     },

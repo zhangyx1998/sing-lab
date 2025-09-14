@@ -6,13 +6,16 @@ import Monitor from '@src/Monitor.vue';
 import Scope from '@src/Scope.vue';
 import Editor from '@src/components/Editor.vue';
 
-import { ref } from 'vue';
+import { shallowRef } from 'vue';
 import Music from '@lib/music';
-const music = ref<null | Music>(null);
+const music = shallowRef<Music>();
+Object.defineProperty(window, "music", {
+    get: () => music.value,
+});
 </script>
 
 <template>
-    <Menubar />
+    <Menubar :music="music" />
     <FootBar />
     <HorizontalDivision class="main-layout">
         <template #left>

@@ -5,6 +5,17 @@
 // -------------------------------------------------------
 
 .editor.root {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    padding: 1em;
+    overflow: scroll;
+    text-wrap: nowrap;
+    white-space: nowrap;
+    font-family: "Cascadia Code", "Courier New", Courier, "Consolas", monospace;
+    white-space: pre;
+    caret-color: white;
+    user-select: text;
     @import "editor.scss";
     @import "meta.scss";
     @import "score.scss";

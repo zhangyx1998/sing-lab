@@ -221,7 +221,6 @@ export class RelativeScale implements IndexableScale {
         }
         const pitch = relative_names.findIndex((group) => group.includes(name));
         if (pitch === -1) return null;
-        console.log({ octave, pitch });
         return { octave, pitch };
     }
     static relativeNameOf(delta: DeltaPitch): string {

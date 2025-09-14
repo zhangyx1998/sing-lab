@@ -18,10 +18,12 @@
     "rollup-plugin-esbuild": "^6.1.1",
     "sass": "^1.76.0",
     "simple-git-hooks": "^2.11.1",
+    "tone": "^15.1.22",
     "typescript": "^5.2.2",
     "vite": "^6.2.0",
     "vue": "^3.4.21",
     "vue-tsc": "^2.0.6",
+    "glob": "^11.0.3"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"

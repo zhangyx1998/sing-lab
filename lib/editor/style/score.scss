@@ -5,6 +5,10 @@
 // -------------------------------------------------------
 
 & .score {
+    display: inline-block;
+    overflow: visible;
+    color: white;
+
     &>* {
         display: inline-block;
         margin: 0.4em 0;
@@ -32,10 +36,6 @@
         right: -0.4em;
         bottom: -0.4em;
     }
-
-    display: inline-block;
-    overflow: visible;
-    color: white;
 
     .token.placeholder {
         color: gray;

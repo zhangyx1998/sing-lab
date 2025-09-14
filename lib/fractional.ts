@@ -66,6 +66,22 @@ export default class Fractional {
         const that = new Fractional(other);
         return this.dividend === that.dividend && this.divisor === that.divisor;
     }
+    gt(other: Fractional | number = 0): boolean {
+        const that = new Fractional(other);
+        return this.dividend * that.divisor > that.dividend * this.divisor;
+    }
+    gte(other: Fractional | number = 0): boolean {
+        const that = new Fractional(other);
+        return this.dividend * that.divisor >= that.dividend * this.divisor;
+    }
+    lt(other: Fractional | number = 0): boolean {
+        const that = new Fractional(other);
+        return this.dividend * that.divisor < that.dividend * this.divisor;
+    }
+    lte(other: Fractional | number = 0): boolean {
+        const that = new Fractional(other);
+        return this.dividend * that.divisor <= that.dividend * this.divisor;
+    }
     get float(): number {
         return this.dividend / this.divisor;
     }

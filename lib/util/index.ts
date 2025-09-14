@@ -32,8 +32,9 @@ export function defer<T = any>() {
     };
 }
 
-export async function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+export function delay(ms: number) {
+    if (ms <= 0) return Promise.resolve();
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 export function clamp(val: number, [min, max]: [number, number]) {

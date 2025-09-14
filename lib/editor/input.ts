@@ -13,7 +13,7 @@ export default function handleInput(
 ) {
     event.preventDefault();
     const { inputType } = event;
-    let data = event.data ?? "";
+    let data = event.data ?? event.dataTransfer?.getData("text/plain") ?? "";
     if (!code.cursor) return;
     const { before, selected, after } = code.cursor;
     const [L, S, R] = [before.text, selected.text, after.text];

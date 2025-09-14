@@ -231,7 +231,7 @@ function displayProps<T extends MusicElement & { pitch?: Pitch | null }>(arr: T[
     const top = Pos.Y({ fractional: props.viewPortFreqRange.frac_upper });
     const bottom = Pos.Y({ fractional: props.viewPortFreqRange.frac_lower });
     return arr.map(el => {
-        const [s, e] = props.music.pos(el);
+        const [s, _, e] = props.music.pos(el);
         const y = el.pitch && Pos.Y(el.pitch);
         const [x1, x2] = [Pos.X(s), Pos.X(e)];
         return {
